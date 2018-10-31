@@ -1,0 +1,80 @@
+
+import android.content.Context;
+import android.support.v7.widget.AppCompatEditText;
+import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputConnectionWrapper;
+
+class HasKeyDownListenerEdit extends AppCompatEditText {
+
+    private SoftInputConnection inputConnection;
+    private OnDeleteKeyDownListener mListener;
+
+    HasKeyDownListenerEdit(Context context) {
+        super(context);
+        this.inputConnection = new SoftInputConnection(null, true);
+    }
+
+    void setOnDeleteKeyDownListener(OnDeleteKeyDownListener listener) {
+        this.mListener = listener;
+        this.inputConnection.setOnDeleteKeyDownListener(listener);
+    }
+
+    private boolean hasListener() { return null != this.mListener; }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode == KeyEvent.KEYCODE_DEL && hasListener())
+            this.mListener.onDeleteKeyDown();
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        this.inputConnection.setTarget(super.onCreateInputConnection(outAttrs));
+        return this.inputConnection;
+    }
+
+    /**
+     * 部分手机不会触发上面的onKeyDown事件，所以需要对软键盘的输入连接做拦截
+     */
+    public static final class SoftInputConnection extends InputConnectionWrapper {
+
+        private OnDeleteKeyDownListener mListener;
+
+        /**
+         * Initializes a wrapper.
+         * <p>
+         * <p><b>Caveat:</b> Although the system can accept {@code (InputConnection) null} in some
+         * places, you cannot emulate such a behavior by non-null {@link InputConnectionWrapper} that
+         * has {@code null} in {@code target}.</p>
+         *
+         * @param target  the {@link InputConnection} to be proxied.
+         * @param mutable set {@code true} to protect this object from being reconfigured to target
+         *                another {@link InputConnection}.  Note that this is ignored while the target is {@code null}.
+         */
+        SoftInputConnection(InputConnection target, boolean mutable) {
+            super(target, mutable);
+        }
+
+        void setOnDeleteKeyDownListener(OnDeleteKeyDownListener listener) {
+            this.mListener = listener;
+        }
+
+        private boolean hasListener() { return null != this.mListener; }
+
+        /**
+         * 大部分手机不会触发
+         */
+        @Override
+        public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+            if(hasListener()) this.mListener.onDeleteKeyDown();
+            return super.deleteSurroundingText(beforeLength, afterLength);
+        }
+    }
+
+    public interface OnDeleteKeyDownListener {
+        void onDeleteKeyDown();
+    }
+}
