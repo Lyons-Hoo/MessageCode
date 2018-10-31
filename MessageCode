@@ -1,0 +1,343 @@
+
+import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Color;
+import android.support.annotation.ColorInt;
+import android.support.annotation.Nullable;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.util.AttributeSet;
+import android.util.TypedValue;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+
+public class MessageCode extends LinearLayout implements View.OnFocusChangeListener, HasKeyDownListenerEdit.OnDeleteKeyDownListener, TextWatcher {
+
+    private static final int DEFAULT_CODE_LENGTH = 6; // 验证码默认位数
+    private static final int DEFAULT_TEXT_SIZE = 10; // 默认文字大小
+    private static final int DEFAULT_TEXT_COLOR = Color.BLACK;
+    private static final int DEFAULT_CODE_VIEW_SPACE = 10; // 默认间距10dip
+
+    private int mCodeLength = MessageCode.DEFAULT_CODE_LENGTH; // 验证码位数
+    private float mTextSizeSp = MessageCode.DEFAULT_TEXT_SIZE; // 文字大小
+    private @ColorInt
+    int mTextColor = MessageCode.DEFAULT_TEXT_COLOR; // 验证码文本颜色
+    private int mCodeViewSpaceDip = MessageCode.DEFAULT_CODE_VIEW_SPACE; // 每个view之间的间距
+    private int mCurrentFocusViewIndex; // 记录当前获取到焦点的Edit下标
+
+    private OnInputtedCodeListener mListener;
+
+    public MessageCode(Context context) { this(context, null); }
+
+    public MessageCode(Context context, @Nullable AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
+
+    public MessageCode(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init(context, attrs);
+    }
+
+    private void init(Context context, AttributeSet attrs) {
+        initAttr(context, attrs);
+        initSelf();
+        addChildView(context);
+        requestFocusToFirstView();
+    }
+
+    public void setOnInputtedCodeListener(OnInputtedCodeListener listener) {
+        this.mListener = listener;
+    }
+
+    /**
+     * 设置验证码
+     */
+    public boolean setCode(String code) {
+        if(!TextUtils.isEmpty(code) && code.length() == this.mCodeLength && isNumberText(code)) {
+            final char[] codes = code.toCharArray();
+            for(int i = 0; i < this.mCodeLength; i++) {
+                final EditText childView = (EditText) this.getChildAt(i);
+                childView.setText(String.valueOf(codes[i]));
+            }
+            ((EditText)this.getChildAt(this.mCodeLength-1)).setSelection(1);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 清除输入的验证码
+     */
+    public void clearCode() {
+        for(int i = 0; i < this.mCodeLength; i++) {
+            ((EditText)this.getChildAt(i)).setText("");
+        }
+        requestFocusToFirstView();
+    }
+
+    private boolean isNumberText(String text) {
+        double number = -1;
+        if(!TextUtils.isEmpty(text)) {
+            try {
+                number = Double.valueOf(text);
+            } catch (NumberFormatException e) { /* nothing to do */ }
+        }
+        return number != -1;
+    }
+
+    private boolean hasListener() { return null != this.mListener; }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if(event.getAction() == MotionEvent.ACTION_DOWN) {
+            showSoftInput();
+            this.setFocusable(false);
+            this.setFocusableInTouchMode(false);
+        }
+        return super.onTouchEvent(event);
+    }
+
+    /**
+     * 弹出软键盘
+     */
+    private void showSoftInput() {
+        InputMethodManager inputManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if(null != inputManager) inputManager.showSoftInput(this.getChildAt(0), 0);
+    }
+
+    /**
+     * 第一个View获取焦点
+     */
+    private void requestFocusToFirstView() {
+        final View firstView = this.getChildAt(0);
+        firstView.setEnabled(true);
+        firstView.setFocusable(true);
+        firstView.setFocusableInTouchMode(true);
+        firstView.requestFocus();
+    }
+
+    /**
+     * 添加子view到容器中
+     */
+    private void addChildView(Context context) {
+        final EditText[] allCodeView = this.createAllCodeViewByLength(context);
+        for (EditText codeView : allCodeView) {
+            this.addView(codeView);
+        }
+    }
+
+    /**
+     * 初始化容器相关
+     */
+    private void initSelf() {
+        this.setOrientation(LinearLayout.HORIZONTAL);
+        this.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        );
+    }
+
+    /**
+     * 初始化codeView的属性
+     */
+    private void initAttr(Context context, AttributeSet attrs) {
+        if(null != attrs) {
+            final int[] styleable = new int[] { android.R.attr.textSize, android.R.attr.textColor };
+            TypedArray typedArray = context.obtainStyledAttributes(attrs, styleable);
+            if(null != typedArray) {
+                this.mTextSizeSp = typedArray.getDimensionPixelSize(0, MessageCode.DEFAULT_TEXT_SIZE);
+                this.mTextColor = typedArray.getColor(1, Color.BLACK);
+                typedArray.recycle();
+            }
+        }
+    }
+
+    /**
+     * 创建所有的验证码输入框
+     */
+    private EditText[] createAllCodeViewByLength(Context context) {
+        final EditText[] allCodeView = new EditText[this.mCodeLength];
+        for (int i = 0; i < this.mCodeLength; i++) {
+            final EditText singleCodeView = createSingleCodeView(context);
+            if (i == this.mCodeLength - 1) {
+                final MarginLayoutParams marginLayoutParams = (MarginLayoutParams) singleCodeView.getLayoutParams();
+                marginLayoutParams.rightMargin -= this.mCodeViewSpaceDip;
+                singleCodeView.setLayoutParams(marginLayoutParams);
+            }
+            allCodeView[i] = singleCodeView;
+        }
+        return allCodeView;
+    }
+
+    /**
+     * 创建单个的验证码输入框
+     */
+    private EditText createSingleCodeView(Context context) {
+        final HasKeyDownListenerEdit singleCodeView = new HasKeyDownListenerEdit(context);
+        final MarginLayoutParams layoutParams = new MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
+        singleCodeView.setLayoutParams(layoutParams);
+        singleCodeView.setTextSize(TypedValue.COMPLEX_UNIT_PX, this.mTextSizeSp);
+        singleCodeView.setTextColor(this.mTextColor);
+        singleCodeView.setInputType(EditorInfo.TYPE_CLASS_NUMBER); // 电话号码的输入方式
+        singleCodeView.setFilters(new InputFilter[] {new InputFilter.LengthFilter(1)}); // 限制输入位数
+        singleCodeView.setPadding(dp2px(14), singleCodeView.getPaddingTop(), // 是为了拉长下划线
+                dp2px(14), singleCodeView.getPaddingBottom());
+        singleCodeView.setEnabled(false); // 默认不可见且不具备获取焦点能力
+        singleCodeView.setFocusable(false);
+        singleCodeView.setTextIsSelectable(false);
+        singleCodeView.setFocusableInTouchMode(false);
+        singleCodeView.setOnFocusChangeListener(this);
+        singleCodeView.setOnDeleteKeyDownListener(this);
+        singleCodeView.addTextChangedListener(this);
+        return singleCodeView;
+    }
+
+    @Override
+    public void onFocusChange(View v, boolean hasFocus) {
+        if (hasFocus) this.mCurrentFocusViewIndex = getCurrentFocusViewIndex(v);
+    }
+
+    /**
+     * 根据当前获取到焦点的view，找到其位于父容器中的位置
+     */
+    private int getCurrentFocusViewIndex(View focusedView) {
+        int index = -1;
+        for (int i = 0; i < this.mCodeLength; i++) {
+            if (focusedView == this.getChildAt(i)) index = i;
+        }
+        return index;
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+    }
+
+    @Override
+    public void onTextChanged(CharSequence s, int start, int before, int count) {
+    }
+
+    @Override
+    public void afterTextChanged(Editable s) {
+        final boolean isCurrentLastView = this.mCurrentFocusViewIndex == this.getChildCount() - 1;
+        if (!TextUtils.isEmpty(s)) {
+            requestFocusToNextView();
+            if(isCurrentLastView && hasListener())
+                this.mListener.onInputtedCode(getInputCode());
+        }
+    }
+
+    /**
+     * 获取输入的验证码
+     */
+    public String getInputCode() {
+        final StringBuilder sb = new StringBuilder();
+        for(int i = 0; i < this.mCodeLength; i++) {
+            final View childView = this.getChildAt(i);
+            if(null != childView && childView instanceof EditText) {
+                sb.append(((EditText)childView).getText());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 请求下一个view获取焦点
+     */
+    private void requestFocusToNextView() {
+        requestFocusToViewByIndex(getNextViewIndex());
+    }
+
+    /**
+     * 提供边界检查
+     */
+    private int getNextViewIndex() {
+        this.mCurrentFocusViewIndex++;
+        if (this.mCurrentFocusViewIndex > this.getChildCount() - 1)
+            this.mCurrentFocusViewIndex = this.getChildCount() - 1;
+        return this.mCurrentFocusViewIndex;
+    }
+
+    /**
+     * 根据下标，指定的view请求获取焦点
+     */
+    private void requestFocusToViewByIndex(int index) {
+        if (index > -1 && index < this.getChildCount()) { // 边界检查
+            final View nextView = this.getChildAt(index);
+            nextView.setEnabled(true);
+            nextView.setFocusable(true);
+            nextView.setFocusableInTouchMode(true);
+            nextView.requestFocus();
+            removeOtherViewFocusByCurrent(index);
+        }
+    }
+
+    /**
+     * 除了当前的view，其他view的焦点获取能力全部移除
+     */
+    private void removeOtherViewFocusByCurrent(int index) {
+        for(int i = 0; i < this.mCodeLength; i++) {
+            if(i != index) {
+                final View childView = this.getChildAt(i);
+                childView.setEnabled(false);
+                childView.setFocusable(false);
+                childView.setFocusableInTouchMode(false);
+            }
+        }
+    }
+
+    /**
+     * 删除键触发
+     */
+    @Override
+    public void onDeleteKeyDown() {
+        if(this.mCurrentFocusViewIndex == mCodeLength - 1) {
+            final EditText lastView = (EditText) this.getChildAt(this.mCurrentFocusViewIndex);
+            if(!TextUtils.isEmpty(lastView.getText())) {
+                return;
+            }
+        }
+        ((EditText) this.getChildAt(getLastViewIndex())).setText(""); // 清空上一个文本输入
+        requestFocusToCurrentView();
+    }
+
+    /**
+     * 请求上一个view获取焦点
+     */
+    private void requestFocusToLastView() {
+        requestFocusToViewByIndex(getLastViewIndex());
+    }
+
+    /**
+     * 当前输入框请求获取焦点
+     */
+    private void requestFocusToCurrentView() {
+        requestFocusToViewByIndex(this.mCurrentFocusViewIndex);
+    }
+
+    /**
+     * 提供边界检查
+     */
+    private int getLastViewIndex() {
+        this.mCurrentFocusViewIndex--;
+        if (this.mCurrentFocusViewIndex < 0) this.mCurrentFocusViewIndex = 0;
+        return this.mCurrentFocusViewIndex;
+    }
+
+    private int dp2px(float dpVal) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+                dpVal, getResources().getDisplayMetrics());
+    }
+
+    public interface OnInputtedCodeListener {
+        void onInputtedCode(String inputCode);
+    }
+}
