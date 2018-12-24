@@ -127,7 +127,7 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
      * 添加子view到容器中
      */
     private void addChildView(Context context) {
-        final EditText[] allCodeView = this.createAllCodeViewByLength(context);
+        final EditText[] allCodeView = this.createAllCodeViewByLength(context, i != this.mCodeLength - 1);
         for (EditText codeView : allCodeView) {
             this.addView(codeView);
         }
@@ -181,12 +181,12 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
     /**
      * 创建单个的验证码输入框
      */
-    private EditText createSingleCodeView(Context context) {
+    private EditText createSingleCodeView(Context context, boolean needRightMargin) {
         final HasKeyDownListenerEdit singleCodeView = new HasKeyDownListenerEdit(context);
         final ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
+        if(needRightMargin) layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
         singleCodeView.setLayoutParams(layoutParams);
         singleCodeView.setTextSize(TypedValue.COMPLEX_UNIT_PX, this.mTextSizeSp);
         singleCodeView.setTextColor(this.mTextColor);
