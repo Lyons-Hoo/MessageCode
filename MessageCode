@@ -1,3 +1,4 @@
+package com.yitaiyun.bcex.publics.widget.codeview;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -27,8 +28,7 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
 
     private int mCodeLength = MessageCode.DEFAULT_CODE_LENGTH; // 验证码位数
     private float mTextSizeSp = MessageCode.DEFAULT_TEXT_SIZE; // 文字大小
-    private @ColorInt
-    int mTextColor = MessageCode.DEFAULT_TEXT_COLOR; // 验证码文本颜色
+    private @ColorInt int mTextColor = MessageCode.DEFAULT_TEXT_COLOR; // 验证码文本颜色
     private int mCodeViewSpaceDip = MessageCode.DEFAULT_CODE_VIEW_SPACE; // 每个view之间的间距
     private int mCurrentFocusViewIndex; // 记录当前获取到焦点的Edit下标
 
@@ -141,6 +141,9 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
         this.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         );
+        this.setPadding(0, dp2px(10), 0, 0);
+        this.setFocusable(true);
+        this.setFocusableInTouchMode(true);
     }
 
     /**
@@ -180,7 +183,7 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
      */
     private EditText createSingleCodeView(Context context) {
         final HasKeyDownListenerEdit singleCodeView = new HasKeyDownListenerEdit(context);
-        final MarginLayoutParams layoutParams = new MarginLayoutParams(
+        final ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         );
         layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
