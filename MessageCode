@@ -166,27 +166,20 @@ public class MessageCode extends LinearLayout implements View.OnFocusChangeListe
      */
     private EditText[] createAllCodeViewByLength(Context context) {
         final EditText[] allCodeView = new EditText[this.mCodeLength];
-        for (int i = 0; i < this.mCodeLength; i++) {
-            final EditText singleCodeView = createSingleCodeView(context);
-            if (i == this.mCodeLength - 1) {
-                final MarginLayoutParams marginLayoutParams = (MarginLayoutParams) singleCodeView.getLayoutParams();
-                marginLayoutParams.rightMargin -= this.mCodeViewSpaceDip;
-                singleCodeView.setLayoutParams(marginLayoutParams);
-            }
-            allCodeView[i] = singleCodeView;
-        }
+        for (int i = 0; i < this.mCodeLength; i++)
+           allCodeView[i] = createSingleCodeView(context, i != this.mCodeLength - 1);
         return allCodeView;
     }
 
     /**
      * 创建单个的验证码输入框
      */
-    private EditText createSingleCodeView(Context context) {
+    private EditText createSingleCodeView(Context context, boolean needRightMargin) {
         final HasKeyDownListenerEdit singleCodeView = new HasKeyDownListenerEdit(context);
         final ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
+        if(needRightMargin) layoutParams.rightMargin += dp2px(this.mCodeViewSpaceDip);
         singleCodeView.setLayoutParams(layoutParams);
         singleCodeView.setTextSize(TypedValue.COMPLEX_UNIT_PX, this.mTextSizeSp);
         singleCodeView.setTextColor(this.mTextColor);
